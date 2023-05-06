@@ -1,0 +1,298 @@
+---
+title: "Project"
+author: "Venkat Adithya Amula"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(plyr)
+data <- read.csv('cleanedDataset.csv')
+birthplace <- count(data$Birthplace)
+piepercent<- round(100 * birthplace$freq / sum(birthplace$freq), 1)
+ 
+# Plot the chart.
+pie(birthplace$freq, labels = piepercent,
+    main = "Birthplace pie chart", col = rainbow(length(birthplace$x)))
+legend("topright", birthplace$x,
+                    cex = 0.5, fill = rainbow(length(birthplace$x)))
+
+
+pie(birthplace$freq, birthplace$x, cex= 0.5)
+```
+
+```{r}
+data
+```
+
+```{r}
+data["Gender"][data["Gender"] == "Male"] <- 0
+data["Gender"][data["Gender"] == "Female"] <- 1
+
+data$Gender <- as.integer(data$Gender)
+data["Gender"][is.na(data["Gender"])] <- 2
+
+#data["GAD_T_n"] <- lapply(data["GAD_T_n"], sqrt)
+data["GAD_T_n"] <- sqrt(data["GAD_T"])
+data["SPIN_T_n"] <- sqrt(data["SPIN_T"])
+
+data["birth.res"][data["birth.res"] == "Same"] <- 0
+data["birth.res"][data["birth.res"] == "Different"] <- 1
+data$birth.res <- as.integer(data$birth.res)
+
+data["Work"][data["Work"] == "Student"] <- 0
+data["Work"][data["Work"] == "Unemployed"] <- 1
+data["Work"][data["Work"] == "Employed"] <- 2
+data$Work <- as.integer(data$Work)
+data["Work"][is.na(data["Work"])] <- 1
+
+data["Degree"][data["Degree"] == "Degree"] <- 1
+data["Degree"][data["Degree"] == "None"] <- 0
+data$Degree <- as.integer(data$Degree)
+data["Degree"][is.na(data["Degree"])] <- 0
+
+data["Playstyle"][data["Playstyle"] == "Singleplayer"] <- 0
+data["Playstyle"][data["Playstyle"] == "Multiplayer"] <- 1
+data$Playstyle <- as.integer(data$Playstyle)
+data["Playstyle"][is.na(data["Playstyle"])] <- 0
+
+data["Platform"][data["Platform"] == "PC"] <- 0
+data["Platform"][data["Platform"] == "Console (PS, Xbox, ...)"] <- 1
+data["Platform"][data["Platform"] == "Smartphone / Tablet"] <- 2
+data$Platform <- as.integer(data$Platform)
+data["Platform"][is.na(data["Platform"])] <- 1
+
+data["does_stream"] = data["Game"]
+data["does_stream"][data["streams"] == 0] <- "No"
+data["does_stream"][data["streams"] != 0] <- "Yes"
+write.csv(data, "myCleanedDataset.csv")
+
+data_reg <- data[,c("SWL_T", "SPIN_T", "GAD_T" ,"Age", "Hours" ,"streams" ,"Gender" ,"birth.res" ,"Narcissism" ,"Degree" ,"Platform", "Work", "Playstyle")]
+data_reg
+```
+```{r}
+library(ggplot2)
+
+# Load your housing dataset (replace "df" with your actual dataframe name)
+
+# Visualize correlations between variables
+# Scatter plot with regression line for correlation between median_income and median_house_value
+ggplot(data, aes(x = SWL_T, y = GAD_T_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter plot of GAD vs. SWL",
+       x = "SWL",
+       y = "Anxiety")
+
+ggplot(data, aes(x = SPIN_T_n, y = GAD_T_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "GAD vs. SPIN",
+       x = "SPIN",
+       y = "Anxiety")
+
+ggplot(data, aes(x = SWL_T, y = SPIN_T_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "SPIN vs. SWL",
+       x = "SWL",
+       y = "SPIN")
+```
+We see that gamers with more Satisfaction in life have less Social Phobia
+In the paper SWL was predicted with GAD and hours played.. GAD did not have much effect according to them
+```{r}
+ggplot(data, aes(x = Hours, y = GAD_T_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter plot of Median Income vs. Median House Value",
+       x = "Hours Played",
+       y = "Anxiety")
+ggplot(data, aes(x = Hours, y = SWL_T)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter plot of Median Income vs. Median House Value",
+       x = "Hours Played",
+       y = "SWL")
+
+ggplot(data, aes(x = Hours, y = SPIN_T_n)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = "Scatter plot of Median Income vs. Median House Value",
+       x = "Hours Played",
+       y = "SPIN")
+```
+ref : https://www.statology.org/stepwise-regression-r/ 
+```{r}
+intercept_only <- lm(SWL_T ~ 1, data = data_reg)
+
+all <- lm(SWL_T~ ., data=data_reg)
+
+both <- step(intercept_only, direction='both', scope = formula(all), trace = 0)
+
+both$anova
+```
+```{r}
+both$coefficients
+```
+```{r}
+intercept_only <- lm(SWL_T ~ 1, data = data_reg)
+
+all <- lm(SWL_T~ ., data=data_reg)
+
+forward <- step(intercept_only, direction='forward', scope = formula(all), trace = 0)
+
+forward$anova
+```
+```{r}
+forward$coefficients
+```
+```{r}
+intercept_only <- lm(SWL_T ~ 1, data = data_reg)
+
+all <- lm(SWL_T~ ., data=data_reg)
+
+back <- step(all, direction='backward', scope = formula(all), trace = 0)
+
+back$anova
+```
+```{r}
+back$coefficients
+```
+```{r}
+library(ggplot2)
+
+# Extract residuals and fitted values from Model 1
+residuals1 <- resid(forward)
+fitted1 <- fitted(forward)
+
+# Calculate the mean of the residuals
+mean_residuals1 <- mean(residuals1)
+
+# Create scatter plot of residuals vs. fitted values with a dividing line
+ggplot(data.frame(residuals = residuals1, fitted = fitted1), aes(x = fitted, y = residuals)) +
+  geom_point() +
+  labs(x = "Fitted Values", y = "Residuals") +
+  ggtitle("Residuals vs. Fitted Values (Forward)") +
+  geom_hline(yintercept = mean_residuals1, linetype = "dashed", color = "red")
+```
+```{r}
+library(car)
+bp_test1 <- ncvTest(both)
+print(bp_test1)
+```
+```{r}
+library(car)
+library(nortest)
+
+residuals1 <- residuals(both)
+qqPlot(residuals1, main = "Q-Q Plot of Residuals")
+```
+```{r}
+# Weighted Regression
+wt <- 1/lm(abs(both$residuals) ~ both$fitted.values)$fitted.values^2
+
+wls_model <- lm(SWL_T ~ SPIN_T + GAD_T + Hours + streams + Gender + birth.res + Narcissism + Platform + Work  + Playstyle, data=data, weights = wt)
+
+summary(wls_model)
+```
+```{r}
+generalized_model <- glm(SWL_T ~ SPIN_T + GAD_T + Hours + streams + Gender + birth.res + Narcissism + Platform + Work  + Playstyle, data=data)
+summary(generalized_model)
+```
+```{r}
+bp_test2 <- ncvTest(wls_model)
+print(bp_test2)
+```
+```{r}
+library(lmtest)
+coeftest(both,vcov = hccm)
+```
+```{r}
+hetsk_robust_model <- lm(SWL_T ~ 0 + offset(-0.5004979 * GAD_T) + offset(-0.0902380  * SPIN_T) + offset(-0.0413032*Hours) + offset(-0.0166196*streams) + offset(0.8679758*Gender) + offset(-0.3032967*birth.res) + offset(0.1197183*Narcissism) + offset(1.3323971 *Platform) + offset(-0.4015648*Work)  + offset(0.9324073*Playstyle), data = data)
+bp_test3 <- ncvTest(hetsk_robust_model)
+print(bp_test3)
+summary(hetsk_robust_model)
+AIC(hetsk_robust_model)
+AIC(both)
+AIC(wls_model)
+AIC(generalized_model)
+```
+
+```{r}
+library(car)
+library(nortest)
+
+residuals2 <- residuals(hetsk_robust_model)
+residuals3 <- residuals(wls_model)
+
+qqPlot(residuals2, main = "Q-Q Plot of Residuals")
+```
+
+```{r}
+print(vif(both))
+```
+#### Hypotheses
+```{r}
+# Introvertedness as a consequence to anxiety from no.of hours played, single-player gamer/not.   
+# Dependent varaible: SWL, GAD, SPIN (continuous)
+# Independent variable: Playstyle (categorical), mean_hours (categorical)
+# TEST: Factorial ANOVA
+
+hypo.5.3 <- aov(SPIN_T_n ~ interaction(Playstyle, mean.hours), data)
+summary(hypo.5.3)
+TukeyHSD(hypo.5.3)
+```
+```{r}
+boxplot(SPIN_T ~ Playstyle, data = data,
+        main = "SPIN_T w.r.t. Playstyle",
+        col = c("#FFE0B2"),
+        xlab = "Playstyle",
+        ylab = "SPIN_T")
+ggplot(data, aes(x = Playstyle, y = SPIN_T)) +
+  geom_boxplot(fill = "#FFE0B2") +
+  labs(title = "SPIN_T w.r.t. Playstyle", x = "Playstyle", y = "SPIN_T") +
+  theme_bw()
+boxplot(SPIN_T ~ mean.hours, data = data,
+        main = "SPIN_T w.r.t. mean_hours",
+        col = c("#FFE0B2"),
+        xlab = "SPIN_T",
+        ylab = "mean_hours")
+
+ggplot(data) + 
+  geom_bar(mapping = aes(x = SPIN_T, fill = mean.hours))
+
+ggplot(data) + 
+  geom_bar(mapping = aes(x = Playstyle, fill = SPIN_T))
+```
+```{r}
+#  Effect of anxiety and social phobia is directly proportional to the time the game is played.
+# Dependent varaible: SWL, GAD, SPIN (continuous)
+# Independent variable: Hours (continuous)
+# TEST: One Way ANOVA
+
+#Converting Hours to hours_group (categorical variable)
+data$hours_group <- cut(data$Hours, breaks=c(-1, 10, 20, 30, 40, 50, Inf), labels=c("0-10", "10-20", "20-30", "30-40", "40-50","50+"))
+
+hypo.8.1 <- aov(SWL_T ~ hours_group, data)
+summary(hypo.8.1)
+TukeyHSD(hypo.8.1)
+hypo.8.2 <- aov(GAD_T_n ~ hours_group, data)
+summary(hypo.8.2)
+TukeyHSD(hypo.8.2)
+hypo.8.3 <- aov(SPIN_T_n ~ hours_group, data)
+summary(hypo.8.3)
+TukeyHSD(hypo.8.3)
+```
+```{r}
+# Gamers who are employed are more narcissistic than the rest
+# Dependent varaible: Narcissism (continuous)
+# Independent variable: Works (categorical)
+# TEST: One-way Independent ANOVA
+hypo.4 <- aov(Narcissism ~ as.factor(Work), data)
+summary(hypo.4)
+TukeyHSD(hypo.4)
+```
+
